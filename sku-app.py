@@ -52,7 +52,7 @@ def update_excel_with_skus(filtered_df, template_excel_file):
     template_df = pd.read_excel(template_excel_file, sheet_name='Template')
 
     # Check if there are at least 4 rows, and create a new 5th row if necessary
-    if len(template_df) < 4:
+    if len(template_df) < 3:
         st.error(f"The template Excel file does not have enough rows. It appears to have {len(template_df)}")
         return None
 

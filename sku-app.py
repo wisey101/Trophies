@@ -57,7 +57,7 @@ def update_excel_with_skus(filtered_df, template_excel_file):
         return None
 
     # Extract the first row (template) data except the SKU column, starting from row 4 (index 3)
-    template_row = template_df.iloc[3, 1:].values
+    template_row = template_df.iloc[2, 1:].values
 
     st.write(f"The template_row is {template_row}")
 

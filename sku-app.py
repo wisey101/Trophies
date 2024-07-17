@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import sqlite3
+import openpyxl
 
 # Create or connect to the SQLite database
 conn = sqlite3.connect('products.db')

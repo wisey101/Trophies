@@ -53,7 +53,7 @@ def update_excel_with_skus(filtered_df, template_excel_file):
 
     # Check if there are at least 4 rows, and create a new 5th row if necessary
     if len(template_df) < 4:
-        st.error("The template Excel file does not have enough rows.")
+        st.error(f"The template Excel file does not have enough rows. It appears to have {len(template_df)}")
         return None
 
     # Extract the first row (template) data except the SKU column, starting from row 4 (index 3)

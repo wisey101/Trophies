@@ -51,8 +51,13 @@ def search_products(search_term, fulfillment_type):
 def update_excel_with_skus(filtered_df, template_excel_file):
     template_df = pd.read_excel(template_excel_file, sheet_name='Template')
 
-    # Extract the first row (template) data except the SKU column
-    template_row = template_df.iloc[3, 1:].values  # Start copying from row 5
+    # Check if there are at least 4 rows, and create a new 5th row if necessary
+    if len(template_df) < 4:
+        st.error("The template Excel file does not have enough rows.")
+        return None
+
+    # Extract the first row (template) data except the SKU column, starting from row 4 (index 3)
+    template_row = template_df.iloc[3, 1:].values
 
     # Create new rows based on filtered SKUs
     new_rows = []
@@ -60,8 +65,11 @@ def update_excel_with_skus(filtered_df, template_excel_file):
         new_row = [sku] + list(template_row)
         new_rows.append(new_row)
 
-    # Append new rows to the template starting from row 5
-    updated_df = pd.concat([template_df.iloc[:4], pd.DataFrame(new_rows, columns=template_df.columns)], ignore_index=True)
+    # Create a new DataFrame for the new rows
+    new_rows_df = pd.DataFrame(new_rows, columns=template_df.columns)
+
+    # Combine the original template rows (up to row 4) with the new rows
+    updated_df = pd.concat([template_df, new_rows_df], ignore_index=True)
 
     # Export the updated DataFrame to a Unicode text file
     unicode_txt_path = 'bulk_customisation.txt'
@@ -104,14 +112,15 @@ if template_file and uploaded_file:
             # Update the Excel template with the filtered SKUs
             unicode_txt_path = update_excel_with_skus(results, template_file)
 
-            # Create a download button for the Unicode text file
-            with open(unicode_txt_path, 'rb') as f:
-                st.download_button(
-                    label="Download bulk_customisation.txt",
-                    data=f,
-                    file_name="bulk_customisation.txt",
-                    mime="text/plain"
-                )
+            if unicode_txt_path:
+                # Create a download button for the Unicode text file
+                with open(unicode_txt_path, 'rb') as f:
+                    st.download_button(
+                        label="Download bulk_customisation.txt",
+                        data=f,
+                        file_name="bulk_customisation.txt",
+                        mime="text/plain"
+                    )
         else:
             st.write("No results found.")
 else:

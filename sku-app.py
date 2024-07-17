@@ -52,7 +52,7 @@ def update_excel_with_skus(filtered_df, template_excel_file):
     template_df = pd.read_excel(template_excel_file, sheet_name='Template')
 
     # Extract the first row (template) data except the SKU column
-    template_row = template_df.iloc[4, 1:].values  # Start copying from row 5
+    template_row = template_df.iloc[3, 1:].values  # Start copying from row 5
 
     # Create new rows based on filtered SKUs
     new_rows = []

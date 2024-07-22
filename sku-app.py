@@ -91,7 +91,7 @@ if template_file and uploaded_file:
 
     # Search interface
     st.header("Search Products")
-    search_term = st.text_input("Enter search term")
+    search_term = st.text_input("Enter search term(s)")
     fulfillment_type = st.radio("Select fulfillment type", ("FBM", "FBA"))
 
     if st.button("Search"):

@@ -99,33 +99,28 @@ if template_file and uploaded_file:
         if not results.empty:
             st.write(f"Found {len(results)} results:")
             st.dataframe(results)
+            
+            # Create a download button for the results
+            csv = results.to_csv(index=False)
+            st.download_button(
+                label="Download results as CSV",
+                data=csv,
+                file_name="search_results.csv",
+                mime="text/csv"
+            )
 
-            # Checkboxes for each row
-            selected_indices = st.multiselect("Select rows to include in the bulk customization:", results.index, format_func=lambda x: results.loc[x, 'item_name'])
-            if len(selected_indices) > 0:
-                filtered_results = results.loc[selected_indices]
-                csv = filtered_results.to_csv(index=False)
-                st.download_button(
-                    label="Download selected results as CSV",
-                    data=csv,
-                    file_name="search_results.csv",
-                    mime="text/csv"
-                )
+            # Update the Excel template with the filtered SKUs
+            unicode_txt_path = update_excel_with_skus(results, template_file)
 
-                # Update the Excel template with the filtered SKUs
-                unicode_txt_path = update_excel_with_skus(filtered_results, template_file)
-
-                if unicode_txt_path:
-                    # Create a download button for the Unicode text file
-                    with open(unicode_txt_path, 'rb') as f:
-                        st.download_button(
-                            label="Download bulk_customisation.txt",
-                            data=f,
-                            file_name="bulk_customisation.txt",
-                            mime="text/plain"
-                        )
-            else:
-                st.write("No rows selected.")
+            if unicode_txt_path:
+                # Create a download button for the Unicode text file
+                with open(unicode_txt_path, 'rb') as f:
+                    st.download_button(
+                        label="Download bulk_customisation.txt",
+                        data=f,
+                        file_name="bulk_customisation.txt",
+                        mime="text/plain"
+                    )
         else:
             st.write("No results found.")
 else:

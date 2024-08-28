@@ -24,45 +24,65 @@ def identify_sections_with_products(data):
             sections[current_main_section] = {"subsections": {}, "sizes": [], "prices": []}
             current_subsection = "MAIN"  # Default subsection
             sections[current_main_section]['subsections'][current_subsection] = []
-        
+            print(f"New Main Section Identified: {current_main_section}")
+
         elif current_main_section:
             # Identify sizes
             if row[0] == 'Size':
-                current_size_info = [x for x in row[3:].tolist() if pd.notna(x)]
+                print(f"Size row detected in section {current_main_section}: {row[3:].tolist()}")
+                current_size_info = [(size.strip(), chr(65 + i)) for i, size in enumerate(row[3:]) if pd.notna(size)]
                 sections[current_main_section]['sizes'] = current_size_info
+                print(f"Sizes identified: {current_size_info}")
             
             # Identify selling prices
             elif row[0] == 'Selling price':
                 current_price_info = [x for x in row[3:].tolist() if pd.notna(x)]
                 sections[current_main_section]['prices'] = current_price_info
+                print(f"Prices identified: {current_price_info}")
             
             # Identify subsections
             elif isinstance(row[0], str) and pd.isna(row[1]):
                 current_subsection = row[0]
                 sections[current_main_section]['subsections'][current_subsection] = []
+                print(f"Subsection Identified: {current_subsection} under {current_main_section}")
             
             # Identify products
             elif isinstance(row[0], str) and isinstance(row[1], str) and isinstance(row[2], str):
                 product_name = row[0]
-                product_code = row[1]
-                product_model = row[2]
+                product_code = row[1].strip()
+                product_model = row[2].strip() if pd.notna(row[2]) else ""
+
+                # Debugging output to check extracted values
+                print(f"Product Name: {product_name}, Product Code: {product_code}, Product Model: {product_model}")
 
                 # Check if the code should be appended to the product name
                 if product_code.lower() in ["colour", "gold", "silver", "bronze"]:
                     full_product_name = f"{current_main_section} {current_subsection} {product_name} {product_code.lower()}"
                     combined_model = product_model
+                    print(f"Matched special code. Full Product Name: {full_product_name}, Model: {combined_model}")
                 else:
                     full_product_name = f"{current_main_section} {current_subsection} {product_name}"
-                    combined_model = f"{product_code} {product_model}"
+                    combined_model = f"{product_code} {product_model}".strip()
+                    print(f"Standard processing. Full Product Name: {full_product_name}, Combined Code & Model: {combined_model}")
 
+                # Ensure the "Code & Model" key is always created
                 product_entry = {
                     "Product Name": full_product_name,
                     "Code & Model": combined_model
                 }
-                
-                for size, price in zip(current_size_info, current_price_info):
-                    product_entry[f"Size_{size}"] = price
-                
+
+                # Assign size-specific codes only if sizes are available
+                if current_size_info:
+                    product_entry["Sizes"] = {}
+                    for size, letter in current_size_info:
+                        product_entry["Sizes"][size] = f"{combined_model} {letter}"
+                    print(f"Product sizes and codes assigned: {product_entry['Sizes']}")
+                else:
+                    print(f"No sizes available for {full_product_name}")
+
+                # Debugging output to check the final product entry
+                print(f"Final Product Entry: {product_entry}")
+
                 sections[current_main_section]['subsections'][current_subsection].append(product_entry)
 
     return sections
@@ -86,13 +106,25 @@ def search_products(sections, search_query):
                 if len(search_terms) == 1:
                     if search_terms[0] in product_name_words:
                         results.append(product)
+                
+                # If search contains multiple words
                 else:
-                    # Count how many search terms match product name words
-                    match_count = sum(1 for term in search_terms if term in product_name_words)
-                    if match_count >= 2:
+                    # Check if all search terms are in the product name words
+                    if all(term in product_name_words for term in search_terms):
                         results.append(product)
     
     return results
+
+# In the output/display part, show sizes and their relevant codes only if they exist
+def display_search_results(results):
+    for result in results:
+        st.write(f"**Product Name:** {result['Product Name']}")
+        st.write(f"**Code & Model:** {result['Code & Model']}")
+        sizes = result.get("Sizes")  # Safely get the "Sizes" dictionary, it will be None if not present
+        if sizes:
+            for size, code in sizes.items():
+                st.write(f"Size: {size}, Code: {code}")
+        st.write("---")
 
 # Check if the local data file exists
 if os.path.exists(local_data_file):
@@ -161,8 +193,15 @@ if 'sections_info' in locals():
                         "Main Section": main_section,
                         "Subsection": subsection,
                         "Product Name": product["Product Name"],
-                        "Code & Model": product["Code & Model"]
+                        "Code & Model": product.get("Code & Model", "N/A")  # Use "N/A" if the key is missing
                     })
+                    sizes = product.get("Sizes")
+                    if sizes:  # Only add sizes if they exist
+                        for size, code in sizes.items():
+                            flattened_data.append({
+                                "Size": size,
+                                "Size Code": code
+                            })
         df = pd.DataFrame(flattened_data)
         csv = df.to_csv(index=False).encode('utf-8')
         st.download_button(
@@ -180,9 +219,6 @@ if 'sections_info' in locals():
         
         if search_results:
             st.write(f"Search results for '{search_term}':")
-            for result in search_results:
-                st.write(f"**Product Name:** {result['Product Name']}")
-                st.write(f"**Code & Model:** {result['Code & Model']}")
-                st.write("---")
+            display_search_results(search_results)
         else:
             st.write(f"No results found for '{search_term}'.")

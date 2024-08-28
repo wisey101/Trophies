@@ -77,24 +77,20 @@ def search_products(sections, search_query):
                 # Check if the search contains only one word
                 if len(search_terms) == 1:
                     if search_terms[0] in product_name_words:
+                        code_model_combined = f"{product['Code']} {product['Model']}" if product["Code"].lower() != "colour" else product["Model"]
                         result_entry = {
-                            "Main Section": main_section,
-                            "Subsection": subsection,
                             "Product Name": product["Product Name"],
-                            "Code": product["Code"],
-                            "Model": product["Model"]
+                            "Code & Model": code_model_combined
                         }
                         results.append(result_entry)
                 else:
                     # Count how many search terms match product name words
                     match_count = sum(1 for term in search_terms if term in product_name_words)
                     if match_count >= 2:
+                        code_model_combined = f"{product['Code']} {product['Model']}" if product["Code"].lower() != "colour" else product["Model"]
                         result_entry = {
-                            "Main Section": main_section,
-                            "Subsection": subsection,
                             "Product Name": product["Product Name"],
-                            "Code": product["Code"],
-                            "Model": product["Model"]
+                            "Code & Model": code_model_combined
                         }
                         results.append(result_entry)
     
@@ -124,6 +120,42 @@ else:
 
 # Display the identified sections with their details
 if 'sections_info' in locals():
+    # Option to upload a new CSV file and overwrite existing data
+    if st.button("Upload a new CSV"):
+        uploaded_file = st.file_uploader("Upload a new CSV file to overwrite existing data", type="csv")
+        if uploaded_file is not None:
+            # Read the new CSV file
+            data = pd.read_csv(uploaded_file, header=None)
+
+            # Identify sections, subsections, and products
+            sections_info = identify_sections_with_products(data)
+
+            # Save the new processed data, overwriting the old data
+            save_sections_info(sections_info, local_data_file)
+            st.write("New data processed and saved locally.")
+
+    # Option to download the current stored data
+    if st.button("Download stored data"):
+        # Convert stored sections info to a DataFrame
+        flattened_data = []
+        for main_section, content in sections_info.items():
+            for subsection, products in content['subsections'].items():
+                for product in products:
+                    flattened_data.append({
+                        "Main Section": main_section,
+                        "Subsection": subsection,
+                        "Product Name": product["Product Name"],
+                        "Code": product["Code"],
+                        "Model": product["Model"]
+                    })
+        df = pd.DataFrame(flattened_data)
+        csv = df.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="Download data as CSV",
+            data=csv,
+            file_name='stored_data.csv',
+            mime='text/csv',
+        )
 
     # Search functionality
     search_term = st.text_input("Enter the name, code, or model of the trophy or medal to search:")
@@ -133,6 +165,9 @@ if 'sections_info' in locals():
         
         if search_results:
             st.write(f"Search results for '{search_term}':")
-            st.write(pd.DataFrame(search_results))
+            for result in search_results:
+                st.write(f"**Product Name:** {result['Product Name']}")
+                st.write(f"**Code & Model:** {result['Code & Model']}")
+                st.write("---")
         else:
             st.write(f"No results found for '{search_term}'.")

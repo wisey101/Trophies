@@ -46,12 +46,20 @@ def identify_sections_with_products(data):
                 product_name = row[0]
                 product_code = row[1]
                 product_model = row[2]
-                full_product_name = f"{current_main_section} {current_subsection} {product_name}"
+
+                # Check if the code should be appended to the product name
+                if product_code.lower() in ["colour", "gold", "silver", "bronze"]:
+                    full_product_name = f"{current_main_section} {current_subsection} {product_name} {product_code.lower()}"
+                    combined_model = product_model
+                else:
+                    full_product_name = f"{current_main_section} {current_subsection} {product_name}"
+                    combined_model = f"{product_code} {product_model}"
+
                 product_entry = {
                     "Product Name": full_product_name,
-                    "Code": product_code,
-                    "Model": product_model
+                    "Code & Model": combined_model
                 }
+                
                 for size, price in zip(current_size_info, current_price_info):
                     product_entry[f"Size_{size}"] = price
                 
@@ -77,22 +85,12 @@ def search_products(sections, search_query):
                 # Check if the search contains only one word
                 if len(search_terms) == 1:
                     if search_terms[0] in product_name_words:
-                        code_model_combined = f"{product['Code']} {product['Model']}" if product["Code"].lower() != "colour" else product["Model"]
-                        result_entry = {
-                            "Product Name": product["Product Name"],
-                            "Code & Model": code_model_combined
-                        }
-                        results.append(result_entry)
+                        results.append(product)
                 else:
                     # Count how many search terms match product name words
                     match_count = sum(1 for term in search_terms if term in product_name_words)
                     if match_count >= 2:
-                        code_model_combined = f"{product['Code']} {product['Model']}" if product["Code"].lower() != "colour" else product["Model"]
-                        result_entry = {
-                            "Product Name": product["Product Name"],
-                            "Code & Model": code_model_combined
-                        }
-                        results.append(result_entry)
+                        results.append(product)
     
     return results
 
@@ -120,6 +118,24 @@ else:
 
 # Display the identified sections with their details
 if 'sections_info' in locals():
+    # Show All Products button
+    if st.button("Show All Products"):
+        st.write("All Sections and Subsections:")
+        sections_to_delete = []
+        for main_section in sections_info.keys():
+            st.write(f"**{main_section}**")
+            for subsection in sections_info[main_section]['subsections'].keys():
+                st.write(f"- {subsection}")
+            if st.button(f"Delete section '{main_section}'", key=main_section):
+                sections_to_delete.append(main_section)
+
+        # If any sections are marked for deletion, remove them and update the saved file
+        if sections_to_delete:
+            for section in sections_to_delete:
+                del sections_info[section]
+            save_sections_info(sections_info, local_data_file)
+            st.write("Selected sections have been deleted and data saved locally.")
+
     # Option to upload a new CSV file and overwrite existing data
     if st.button("Upload a new CSV"):
         uploaded_file = st.file_uploader("Upload a new CSV file to overwrite existing data", type="csv")
@@ -145,8 +161,7 @@ if 'sections_info' in locals():
                         "Main Section": main_section,
                         "Subsection": subsection,
                         "Product Name": product["Product Name"],
-                        "Code": product["Code"],
-                        "Model": product["Model"]
+                        "Code & Model": product["Code & Model"]
                     })
         df = pd.DataFrame(flattened_data)
         csv = df.to_csv(index=False).encode('utf-8')

@@ -210,6 +210,7 @@ if 'sections_info' in locals():
             file_name='stored_data.csv',
             mime='text/csv',
         )
+        
 
     # Search functionality
     search_term = st.text_input("Enter the name, code, or model of the trophy or medal to search:")

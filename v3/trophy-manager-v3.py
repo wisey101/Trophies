@@ -186,9 +186,6 @@ def display_cart_table():
             cart_data["Description"].append(details.get("notes", ""))
             cart_data["Quantity"].append(details.get("quantity", 0))
 
-        # Convert the dictionary to a DataFrame
-        #cart_df = st.dataframe(cart_data, hide_index=True)
-
         # Display the table
         st.dataframe(cart_data, hide_index=True)
     else:

@@ -5,7 +5,7 @@ import csv
 import io
 
 # Title of the app
-st.title("Trophy Manager v3")
+st.title("Trophy Monster Product Manager")
 
 # Define file paths for saving the DataFrame
 local_data_file = "sections_info.pkl"
@@ -97,7 +97,7 @@ def save_sections_info(sections_info, file_path):
 def load_sections_info(file_path):
     return pd.read_pickle(file_path)
 
-def search_products_by_name(sections, search_query):
+def unified_search(sections, search_query):
     results = []
     search_terms = search_query.lower().split()
 
@@ -105,65 +105,46 @@ def search_products_by_name(sections, search_query):
         for subsection, products in content['subsections'].items():
             for product in products:
                 product_name_words = product["Product Name"].lower().split()
+                model_words = product["Code & Model"].lower().split()
 
-                # Check if the search contains only one word
+                # Single word search (similar to CZ Code search)
                 if len(search_terms) == 1:
-                    if search_terms[0] in product_name_words:
+                    if any(search_terms[0] in word for word in product_name_words + model_words):
                         results.append(product)
 
-                # If search contains multiple words
+                # Multi-word search (similar to UK Name search)
                 else:
-                    # Check if all search terms are in the product name words
                     if all(term in product_name_words for term in search_terms):
                         results.append(product)
 
     return results
 
-def search_products_by_cz_code(sections, cz_code):
-    results = []
-
-    for main_section, content in sections.items():
-        for subsection, products in content['subsections'].items():
-            for product in products:
-                # Search by checking if the cz_code exists in the full combined_model string
-                if cz_code.lower() in product["Code & Model"].lower():
-                    results.append(product)
-    
-    return results
-
 def display_search_results(results):
-    for result in results:
+    for idx, result in enumerate(results):
         st.write(f"**Product Name:** {result['Product Name']}")
         st.write(f"**Code & Model:** {result['Code & Model']}")
         sizes = result.get("Sizes")
         
-        # Check if we've started the add-to-cart process for this product
-        if f"show_ui_{result['Product Name']}" not in st.session_state:
-            st.session_state[f"show_ui_{result['Product Name']}"] = False
         
-        # Handle the Add to Cart button
-        if st.button(f"Add to Cart - {result['Product Name']}", key=f"add_{result['Product Name']}"):
-            st.session_state[f"show_ui_{result['Product Name']}"] = True
-        
-        # Display the UI elements for size, quantity, and notes if the process has started
-        if st.session_state[f"show_ui_{result['Product Name']}"]:
+        # Popover for Add to Cart
+        with st.popover(f"Add to Order - {result['Product Name']}"):
             if sizes:
                 # Create a dropdown for selecting size
-                selected_size = st.selectbox("Select Size", options=[size for size, code_letter in sizes.items()], key=f"size_{result['Product Name']}")
+                selected_size = st.selectbox("Select Size", options=[size for size, code_letter in sizes.items()], key=f"size_{result['Product Name']}_{idx}")
                 
                 # Create a number input for selecting quantity
-                quantity = st.number_input(f"Quantity for {result['Product Name']}", min_value=1, value=1, key=f"qty_{result['Product Name']}_{selected_size}")
+                quantity = st.number_input(f"Quantity for {result['Product Name']}", min_value=1, value=1, key=f"qty_{result['Product Name']}_{selected_size}_{idx}")
                 
                 # Text input for notes
-                notes = st.text_input(f"Notes for {result['Product Name']}", key=f"notes_{result['Product Name']}")
+                notes = st.text_input(f"Notes for {result['Product Name']}", key=f"notes_{result['Product Name']}_{idx}")
                 
                 # Get the letter code for the selected size
                 final_code = sizes[selected_size]
                 
                 # Confirmation button to add to cart
-                if st.button("Confirm Add to Cart", key=f"confirm_{result['Product Name']}_{selected_size}"):
+                if st.button("Confirm Add to Order", key=f"confirm_{result['Product Name']}_{selected_size}_{idx}"):
                     add_to_cart(final_code, quantity, notes)
-                    st.session_state[f"show_ui_{result['Product Name']}"] = False
+                    st.rerun()
         
         st.write("---")
 
@@ -172,7 +153,7 @@ placeholder = st.empty()
 # Function to generate the live cart table within the placeholder
 def display_cart_table():
     # Check if the cart is not empty
-    if st.session_state['cart']:
+    if st.session_state.get('cart', {}):
         # Prepare data for the table
         cart_data = {
             "Product": [],
@@ -186,18 +167,45 @@ def display_cart_table():
             cart_data["Description"].append(details.get("notes", ""))
             cart_data["Quantity"].append(details.get("quantity", 0))
 
-        # Display the table
-        st.dataframe(cart_data, hide_index=True)
+        # Convert to a DataFrame for displaying
+        df = pd.DataFrame(cart_data)
+
+        
+        # Display the table with checkbox selection using the event-based API
+        event = st.dataframe(
+            df,
+            key="data",
+            on_select="rerun",
+            selection_mode=["multi-row"],
+            hide_index="true",
+            use_container_width=True
+        )
+
+        # Create a horizontal layout for buttons
+        delete_button_clicked = st.button("Delete selected items", key="delete_button")
+
+        # Handle button actions
+        if delete_button_clicked and event and 'rows' in event.selection:
+            selected_indices = event.selection['rows']
+            for index in selected_indices:
+                product_code_to_delete = df.iloc[index]['Product']
+                del st.session_state['cart'][product_code_to_delete]
+
+            st.success("Selected items deleted from cart.")
+            st.session_state['refresh'] = not st.session_state.get('refresh', False)
+            st.rerun()
+
     else:
-        st.write("Your cart is empty.")
+        st.write("Your order is empty.")
+        # Add a "Refresh" button under the table
+        if st.button("Refresh"):
+            st.session_state['refresh'] = not st.session_state.get('refresh', False)
             
 
 # Initial display of the cart table
 display_cart_table()
 
-# Add a "Refresh" button under the table
-if st.button("Refresh"):
-    st.session_state['refresh'] = not st.session_state.get('refresh', False)
+
 
 # Check if the local data file exists
 if os.path.exists(local_data_file):
@@ -222,36 +230,13 @@ if uploaded_files:
     save_sections_info(sections_info, local_data_file)
     st.write("Data processed and saved locally.")
 
-if st.button("Empty"):
-    st.session_state['cart']={}
+# Single search input for both name and code/model
+search_term = st.text_input("Enter the name or code of the product to search:")
 
-# Search options
-search_option = st.selectbox("Select search option", ["UK Name", "UK Model", "CZ Code"])
-
-if search_option == "UK Name":
-    search_term = st.text_input("Enter the UK name of the trophy or medal to search:")
-    if search_term:
-        search_results = search_products_by_name(sections_info, search_term)
-        if search_results:
-            st.write(f"Search results for '{search_term}':")
-            display_search_results(search_results)
-        else:
-            st.write(f"No results found for '{search_term}'.")
-
-elif search_option == "UK Model":
-    models = sorted([model for model in sections_info.keys()])  # Sort models alphabetically
-    selected_model = st.selectbox("Select a UK model", models)
-    if selected_model:
-        st.write(f"Displaying all products for model: {selected_model}")
-        display_search_results(sections_info[selected_model]['subsections']['MAIN'])
-
-elif search_option == "CZ Code":
-    cz_code = st.text_input("Enter the CZ code to search:")
-    if cz_code:
-        search_results = search_products_by_cz_code(sections_info, cz_code)
-        if search_results:
-            st.write(f"Search results for CZ code '{cz_code}':")
-            display_search_results(search_results)
-        else:
-            st.write(f"No results found for CZ code '{cz_code}'.")
-
+if search_term:
+    search_results = unified_search(sections_info, search_term)
+    if search_results:
+        st.write(f"Search results for '{search_term}':")
+        display_search_results(search_results)
+    else:
+        st.write(f"No results found for '{search_term}'.")

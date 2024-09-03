@@ -123,8 +123,16 @@ def display_search_results(results):
     for idx, result in enumerate(results):
         st.write(f"**Product Name:** {result['Product Name']}")
         st.write(f"**Code & Model:** {result['Code & Model']}")
+
+        # Construct the image path based on the product's code and model
+        image_filename = f"{result['Code & Model'].replace(' ', '')}.webp"
+        image_path = os.path.join("images", image_filename)
+
+        # Check if the image exists and display it if it does
+        if os.path.exists(image_path):
+            st.image(image_path, width=125)
+
         sizes = result.get("Sizes")
-        
         
         # Popover for Add to Cart
         with st.popover(f"Add to Order - {result['Product Name']}"):
@@ -201,12 +209,6 @@ def display_cart_table():
         if st.button("Refresh"):
             st.session_state['refresh'] = not st.session_state.get('refresh', False)
             
-
-# Initial display of the cart table
-display_cart_table()
-
-
-
 # Check if the local data file exists
 if os.path.exists(local_data_file):
     # Load the DataFrame from the local file
@@ -214,6 +216,37 @@ if os.path.exists(local_data_file):
     st.write("Loaded data from local file.")
 else:
     sections_info = {}
+
+# Extract all model names and relevant information from sections_info
+model_data = []
+for model_name, model_info in sections_info.items():
+    num_products = len(model_info['subsections']['MAIN'])
+    sizes_available = ', '.join([size for size, _ in model_info['sizes']])
+    
+    # Append model data as a dictionary
+    model_data.append({
+        "Model Name": model_name,
+        "Number of Products": num_products,
+        "Sizes Available": sizes_available
+    })
+
+# Convert the list of dictionaries to a DataFrame for display
+model_df = pd.DataFrame(model_data)
+
+model_names_show = st.toggle("Show Model Names")
+
+# Add a button to trigger the display of the table
+if model_names_show:
+    if not model_df.empty:
+        # Display the table with model names and additional information
+        st.write("Here are the available models:")
+        st.dataframe(model_df, hide_index="true", use_container_width=True)
+    else:
+        st.write("No models available.")
+
+# Initial display of the cart table
+display_cart_table()
+
 
 # Ask the user to upload one or more CSV files
 uploaded_files = st.file_uploader("Choose CSV files", type="csv", accept_multiple_files=True)
@@ -240,3 +273,4 @@ if search_term:
         display_search_results(search_results)
     else:
         st.write(f"No results found for '{search_term}'.")
+

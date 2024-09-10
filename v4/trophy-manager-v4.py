@@ -6,6 +6,16 @@ import pandas as pd
 supabase = st.connection("supabase", type=SupabaseConnection)
 supabase_url = st.secrets["connections"]["supabase"]["SUPABASE_URL"]
 
+materials_dict = {
+    'trophies': ['acrylic', 'wood'],
+    'medals': ['acrylic', 'wood', 'metal']
+}
+
+singular_to_plural = {
+    'trophy': 'trophies',
+    'medal': 'medals'
+}
+
 st.title("Trophy Monster Product Manager")
 
 # Initialize the order in session state
@@ -142,14 +152,21 @@ def search_products(df, search_query):
         return filtered_df
     return df
 
+# Edit product information, and update database accordingly
+def edit_product(model, origin, name, sport):
+    material = origin[0].lower()
+    category = singular_to_plural.get(origin[1].lower(),origin[1].lower())
+    origin_table = f"{category}_{material}"
+    if name:
+        execute_query(supabase.table(origin_table).update({"name": name}).eq("model", model))
+    if sport:
+        execute_query(supabase.table(origin_table).update({"sport": sport}).eq("model", model))
+    st.cache_data.clear()
+    st.rerun()
+    
     
 # Main function to load data and handle search functionality.
 def main():
-    materials_dict = {
-        'trophies': ['acrylic', 'wood'],
-        'medals': ['acrylic', 'wood', 'metal']
-    }
-    
     final_df = load_data(materials_dict)
     display_order_table()
     search_query = st.text_input("Search for a product by name or code:")
@@ -166,21 +183,25 @@ def main():
                     with col1:
                         st.write(f"**Product Name**: {row['product name']}")
                         st.write(f"**Product Code**: {row['code']}")
-                        sizes_display = ", ".join([f"{size}mm" for size in row['sizes']])
-                        st.write(f"**Available Sizes**: {sizes_display}")
+                        if row['sizes']:
+                            sizes_display = ", ".join([f"{size}mm" for size in row['sizes']])
+                            st.write(f"**Available Sizes**: {sizes_display}")
+                        else:
+                            st.write("No sizes found for this product.")
                     
                     with col2:
                         with st.popover(f"Add to Order - {row['product name']}"):
+                            if row['sizes']:
                             # Size selection dropdown
-                            size_selected = st.selectbox(
-                                f"Select Size for {row['product name']}",
-                                options=[f"{size}mm" for size in row['sizes']], 
-                                key=f"size_{row['product name']}_{idx}"
-                            )
+                                size_selected = st.selectbox(
+                                    f"Select Size for {row['product name']}",
+                                    options=[f"{size}mm" for size in row['sizes']], 
+                                    key=f"size_{row['product name']}_{idx}"
+                                )
 
-                            # Map the selected size back to the corresponding size_code
-                            size_index = [f"{size}mm" for size in row['sizes']].index(size_selected)
-                            size_code = row['size_codes'][size_index]  # Get the corresponding size_code
+                                # Map the selected size back to the corresponding size_code
+                                size_index = [f"{size}mm" for size in row['sizes']].index(size_selected)
+                                size_code = row['size_codes'][size_index]  # Get the corresponding size_code
 
                             # Quantity input
                             quantity = st.number_input(f"Quantity for {row['product name']}", min_value=1, value=1, key=f"qty_{row['product name']}_{idx}")
@@ -192,6 +213,12 @@ def main():
                             if st.button("Confirm Add to Order", key=f"confirm_{row['product name']}_{idx}"):
                                 add_to_order(size_code, quantity, notes)  # Add size_code to the order instead of regular code
                                 st.rerun()
+                        
+                        with st.popover(f"Edit"):
+                            name = st.text_input("Enter a new model name", key=f"namechange_{row['product name']}_{idx}")
+                            sport = st.text_input("Enter a new sport/category", key=f"sportchange_{row['product name']}_{idx}")
+                            if st.button("Confirm", key=f"confirmedit_{row['product name']}_{idx}"):
+                                edit_product(row['code'], row['product name'].split()[-2:], name, sport)
                     
                     # Display the image below the text and button
                     st.image(row['image url'], width=175)

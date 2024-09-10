@@ -2,6 +2,11 @@ import streamlit as st
 from st_supabase_connection import SupabaseConnection, execute_query
 import pandas as pd
 
+st.set_page_config(
+    page_title="Trophy Manager",
+    page_icon="🏆",
+)
+
 # Initialize connection and grab URL from secrets
 supabase = st.connection("supabase", type=SupabaseConnection)
 supabase_url = st.secrets["connections"]["supabase"]["SUPABASE_URL"]
@@ -17,10 +22,15 @@ singular_to_plural = {
 }
 
 st.title("Trophy Monster Product Manager")
+st.page_link("pages/view_products.py", label="**View product ranges**", icon="🔎")
 
-# Initialize the order in session state
+# Initialise the order in session state
 if 'order' not in st.session_state:
     st.session_state['order'] = {}
+
+# Initialise the products in session state for other page
+if 'products' not in st.session_state:
+    st.session_state['products'] = pd.DataFrame
 
 # Function to add items to the order
 def add_to_order(product_code, quantity, notes=""):
@@ -29,9 +39,6 @@ def add_to_order(product_code, quantity, notes=""):
         st.session_state['order'][product_code]['notes'] = notes
     else:
         st.session_state['order'][product_code] = {"quantity": quantity, "notes": notes}
-
-# Placeholder for order operations
-placeholder = st.empty()
 
 # Function to generate the live order table within the placeholder
 def display_order_table():
@@ -87,6 +94,7 @@ def display_order_table():
 # Load data from Supabase and return a combined DataFrame.
 def load_data(materials_dict):
     final_data = []
+    missing_data = []
 
     # Process data for a single material and category, and append to final_data.
     def process_material_data(category, material):
@@ -114,29 +122,47 @@ def load_data(materials_dict):
                     df = pd.merge(prod_df, grouped, on='model', how='left')
 
                     for _, row in df.iterrows():
+                        model_code = row['model']
+                        model_code_clean = model_code.replace(" ", "_")
+                        image_url = f"{base_url}/{model_code_clean}.jpg"
+                        product_code = row['product_code']
                         if row['name']: 
                             product_name = f"{row['name']} {row['sport']} {row['type']}"
-                            model_code = row['model']
-                            model_code_clean = model_code.replace(" ", "_")
-                            image_url = f"{base_url}/{model_code_clean}.jpg"
-                            
                             final_data.append({
                                 'product name': product_name, 
                                 'code': model_code, 
                                 'image url': image_url,
                                 'sizes': row['size'],
-                                'size_codes': row['size_code']
+                                'size_codes': row['size_code'],
+                                'product code': product_code,
+                                'range': row['name']
                                 })
+                        else:
+                            missing_data.append({
+                                'product name': None, 
+                                'code': model_code,
+                                'image url': image_url,
+                                'sizes': row['size'],
+                                'size_codes': row['size_code'],
+                                'product code': product_code,
+                                'range': row['name']
+                            })
             else:
                 st.write("No data found")
         else:
             st.write("Invalid response structure")
-    
+
     for category, materials in materials_dict.items():
         for material in materials:
             process_material_data(category, material)
-    
-    return pd.DataFrame(final_data)
+
+    mdf = pd.DataFrame(missing_data)
+    fdf = pd.DataFrame(final_data)
+    all_data = pd.concat([fdf, mdf], ignore_index=True)
+
+    st.session_state['products'] = pd.DataFrame(all_data)
+
+    return fdf
 
 # Search for products by name or code.
 def search_products(df, search_query):

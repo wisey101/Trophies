@@ -9,3 +9,4 @@
 /products
 /backup
 /v4/.streamlit/secrets.toml
+/v5/.streamlit/secrets.toml

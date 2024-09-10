@@ -107,8 +107,8 @@ def load_data(materials_dict):
                         if row['name']: 
                             product_name = f"{row['name']} {row['sport']} {row['type']}"
                             model_code = row['model']
-                            image_url = f"{base_url}/{row['model']}.jpg"
-                            sizes_str = ", ".join([f"{row['size']}mm" for _, row in df[df['model'] == model_code].iterrows()])
+                            model_code_clean = model_code.replace(" ", "_")
+                            image_url = f"{base_url}/{model_code_clean}.jpg"
                             
                             final_data.append({
                                 'product name': product_name, 

@@ -108,12 +108,17 @@ def load_data(materials_dict):
 # Search for products by name or code.
 def search_products(df, search_query):
     if search_query:
+        # Split the search query into individual terms
+        search_terms = search_query.split()
+
+        # Check if all search terms are present in either 'product name' or 'code'
         filtered_df = df[
-            df['product name'].str.contains(search_query, case=False, na=False) |
-            df['code'].str.contains(search_query, case=False, na=False)
+            df['product name'].apply(lambda name: all(term.lower() in name.lower() for term in search_terms)) |
+            df['code'].apply(lambda code: all(term.lower() in code.lower() for term in search_terms))
         ]
         return filtered_df
     return df
+
     
 # Main function to load data and handle search functionality.
 def main():

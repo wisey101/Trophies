@@ -81,19 +81,42 @@ def load_data(materials_dict):
     # Process data for a single material and category, and append to final_data.
     def process_material_data(category, material):
         table = f'{category}_{material}'
+        size_table = f'{table}_sizes'
+
         response = execute_query(supabase.table(table).select("*"), ttl=0)
+        size_response = execute_query(supabase.table(size_table).select("*"), ttl=0)
+
         base_url = f"{supabase_url}/storage/v1/object/public/{table}/"
         
         if hasattr(response, 'data'):
             data = response.data
+            size_data = size_response.data
+
             if data:
-                df = pd.DataFrame(data)
-                for _, row in df.iterrows():
-                    if row['name']: 
-                        product_name = f"{row['name']} {row['sport']} {row['type']}"
-                        model_code = row['model']
-                        image_url = f"{base_url}/{row['model']}.jpg"
-                        final_data.append({'product name': product_name, 'code': model_code, 'image url': image_url})
+                if size_data:    
+                    prod_df = pd.DataFrame(data)
+                    sizes_df = pd.DataFrame(size_data)
+                    ungrouped_df = pd.merge(prod_df, sizes_df, on='model', how='left')
+                    grouped = ungrouped_df.groupby('model').agg({
+                        'size': lambda x: list(x.dropna()),
+                        'size_code': lambda x: list(x.dropna())
+                    })
+                    df = pd.merge(prod_df, grouped, on='model', how='left')
+
+                    for _, row in df.iterrows():
+                        if row['name']: 
+                            product_name = f"{row['name']} {row['sport']} {row['type']}"
+                            model_code = row['model']
+                            image_url = f"{base_url}/{row['model']}.jpg"
+                            sizes_str = ", ".join([f"{row['size']}mm" for _, row in df[df['model'] == model_code].iterrows()])
+                            
+                            final_data.append({
+                                'product name': product_name, 
+                                'code': model_code, 
+                                'image url': image_url,
+                                'sizes': row['size'],
+                                'size_codes': row['size_code']
+                                })
             else:
                 st.write("No data found")
         else:
@@ -128,6 +151,7 @@ def main():
     }
     
     final_df = load_data(materials_dict)
+    display_order_table()
     search_query = st.text_input("Search for a product by name or code:")
     
     if search_query:
@@ -142,12 +166,23 @@ def main():
                     with col1:
                         st.write(f"**Product Name**: {row['product name']}")
                         st.write(f"**Product Code**: {row['code']}")
+                        sizes_display = ", ".join([f"{size}mm" for size in row['sizes']])
+                        st.write(f"**Available Sizes**: {sizes_display}")
                     
                     with col2:
                         with st.popover(f"Add to Order - {row['product name']}"):
+                            # Size selection dropdown
+                            size_selected = st.selectbox(
+                                f"Select Size for {row['product name']}",
+                                options=[f"{size}mm" for size in row['sizes']], 
+                                key=f"size_{row['product name']}_{idx}"
+                            )
 
-                            code = row['code']
+                            # Map the selected size back to the corresponding size_code
+                            size_index = [f"{size}mm" for size in row['sizes']].index(size_selected)
+                            size_code = row['size_codes'][size_index]  # Get the corresponding size_code
 
+                            # Quantity input
                             quantity = st.number_input(f"Quantity for {row['product name']}", min_value=1, value=1, key=f"qty_{row['product name']}_{idx}")
                             
                             # Text input for notes
@@ -155,7 +190,7 @@ def main():
                             
                             # Confirmation button to add to cart
                             if st.button("Confirm Add to Order", key=f"confirm_{row['product name']}_{idx}"):
-                                add_to_order(code, quantity, notes)
+                                add_to_order(size_code, quantity, notes)  # Add size_code to the order instead of regular code
                                 st.rerun()
                     
                     # Display the image below the text and button
@@ -165,8 +200,6 @@ def main():
             st.write("No products found.")
     else:
         st.write("Please enter a search term.")
-
-    display_order_table()
 
 # Run the main function
 if __name__ == "__main__":

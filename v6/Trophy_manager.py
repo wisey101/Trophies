@@ -1,6 +1,9 @@
 import streamlit as st
 from st_supabase_connection import SupabaseConnection, execute_query
 import pandas as pd
+import math
+import streamlit_antd_components as sac
+
 
 st.set_page_config(
     page_title="Trophy Manager",
@@ -124,7 +127,31 @@ def edit_product(model, origin, name, sport):
     st.cache_data.clear()
     load_data(materials_dict)
     
-    
+def display_pagination(key, total, page_size=25, align='center', jump=True, show_total=True):
+    # Calculate total pages
+    total_pages = math.ceil(total / page_size)
+
+    # Initialize current_page in session state if not present
+    if 'current_page' not in st.session_state:
+        st.session_state['current_page'] = 1
+
+    # Display the Ant Design pagination component
+    selected_page = sac.pagination(
+        total=total,
+        index=st.session_state['current_page'],
+        page_size=page_size,
+        align=align,
+        jump=jump,
+        show_total=show_total,
+        key=f"pagination_{key}",
+        color="green"
+    )
+
+    # Update the current_page in session state if changed
+    if selected_page != st.session_state['current_page']:
+        st.session_state['current_page'] = selected_page
+        st.rerun()
+
 # Main function to load data and handle search functionality.
 def main():
 
@@ -136,14 +163,45 @@ def main():
 
     display_order_table()
     search_query = st.text_input("Search for a product by name or code:")
+
+    # Reset current page when a new search is performed
+    if 'last_search' not in st.session_state:
+        st.session_state['last_search'] = ""
+
+    if search_query != st.session_state['last_search']:
+        st.session_state['current_page'] = 1
+        st.session_state['last_search'] = search_query
     
     if search_query:
         result_df = search_products(final_df, search_query)
         
         if not result_df.empty:
-            for idx, row in result_df.iterrows():
+            # Pagination parameters
+            PAGE_SIZE = 25
+            total_results = len(result_df)
+            total_pages = math.ceil(total_results / PAGE_SIZE)
+
+            # Initialize current_page in session state
+            if 'current_page' not in st.session_state:
+                st.session_state['current_page'] = 1
+
+            # Ensure current_page is within valid range
+            if st.session_state['current_page'] > total_pages:
+                st.session_state['current_page'] = total_pages
+            if st.session_state['current_page'] < 1:
+                st.session_state['current_page'] = 1
+
+            # Calculate start and end indices for slicing
+            start_idx = (st.session_state['current_page'] - 1) * PAGE_SIZE
+            end_idx = start_idx + PAGE_SIZE
+            current_page_df = result_df.iloc[start_idx:end_idx]
+
+            # Display the sleek pagination bar above the search input
+            st.markdown("<hr style='margin-top: 20px; margin-bottom: 10px;'>", unsafe_allow_html=True)
+            display_pagination(key="top", total=total_results, page_size=PAGE_SIZE, align='center', jump=False, show_total=True)
+
+            for idx, row in current_page_df.iterrows():
                 with st.container():
-                    st.write("---")
                     col1, col2, col3 = st.columns([3, 1, 1])
                     
                     with col1:
@@ -209,7 +267,10 @@ def main():
                     
                     # Display the image below the text and button
                     st.image(row['image url'], width=175)
-                    
+
+            display_pagination(key="bottom", total=total_results, page_size=PAGE_SIZE, align='center', jump=False, show_total=True)
+            st.markdown("<hr style='margin-top: 10px; margin-bottom: 20px;'>", unsafe_allow_html=True)
+
         else:
             st.write("No products found.")
     else:

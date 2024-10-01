@@ -267,6 +267,7 @@ def main():
                     
                     # Display the image below the text and button
                     st.image(row['image url'], width=175)
+                    st.write('---')
 
             display_pagination(key="bottom", total=total_results, page_size=PAGE_SIZE, align='center', jump=False, show_total=True)
             st.markdown("<hr style='margin-top: 10px; margin-bottom: 20px;'>", unsafe_allow_html=True)

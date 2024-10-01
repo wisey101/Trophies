@@ -197,8 +197,9 @@ def main():
             current_page_df = result_df.iloc[start_idx:end_idx]
 
             # Display the sleek pagination bar above the search input
-            st.markdown("<hr style='margin-top: 20px; margin-bottom: 10px;'>", unsafe_allow_html=True)
+            st.markdown("<hr style='margin-top: 20px; margin-bottom: 20px;'>", unsafe_allow_html=True)
             display_pagination(key="top", total=total_results, page_size=PAGE_SIZE, align='center', jump=False, show_total=True)
+            st.markdown("<hr style='margin-top: 0px; margin-bottom: 10px;'>", unsafe_allow_html=True)
 
             for idx, row in current_page_df.iterrows():
                 with st.container():

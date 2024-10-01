@@ -25,16 +25,9 @@ singular_to_plural = {
 
 st.title("Trophy Monster Product Manager")
 
-# Arrange the buttons in columns
-col1, blank, col2 = st.columns([1, 1, 1])
-
-with col1:
-    st.page_link("pages/view_products.py", label="**View product ranges**", icon="🔎")
-
-with col2:
-    if st.button("🔄 Refresh Data"):
-        st.cache_data.clear()
-        load_data(materials_dict)
+if st.button("🔄 Refresh Data"):
+    st.cache_data.clear()
+    load_data(materials_dict)
 
 # Initialise the order in session state
 if 'order' not in st.session_state:
@@ -180,12 +173,32 @@ def main():
                             quantity = st.number_input(f"Quantity for {row['product name']}", min_value=1, value=1, key=f"qty_{row['product name']}_{idx}")
                             
                             # Text input for notes
-                            notes = st.text_input(f"Notes for {row['product name']}", key=f"notes_{row['product name']}_{idx}")
+                            notes = st.text_input(f"Notes (e.g. colour) for {row['product name']}", key=f"notes_{row['product name']}_{idx}")
                             
                             # Confirmation button to add to cart
+                            # Confirmation button to add to cart
                             if st.button("Confirm Add to Order", key=f"confirm_{row['product name']}_{idx}"):
-                                add_to_order(size_code, quantity, notes)  # Add size_code to the order instead of regular code
+                                # Define the ranges that require appending 'sport' to notes
+                                ranges_to_append_sport = ['ACLA2101', 'MDAB', 'MDAA10']
+                                
+                                # Check if the product's range is in the specified list
+                                if row['product code'] in ranges_to_append_sport:
+                                    # Append 'sport' to the notes
+                                    if notes.strip():  # Check if notes are not empty
+                                        notes += f", {row['sport']}"
+                                    else:
+                                        notes = f"{row['sport']}"
+                                
+                                if notes.strip():  # Check if notes are not empty
+                                    notes += f", {size_selected}"
+                                else:
+                                    notes = f"{size_selected}"
+
+
+                                # Add the product to the order with the updated notes
+                                add_to_order(size_code, quantity, notes)
                                 st.rerun()
+
 
                     with col3:
                         with st.popover(f"Edit"):

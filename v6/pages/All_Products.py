@@ -121,7 +121,7 @@ def display_tables(df_with_range, df_without_range):
     a, col1, col2, b = st.columns([1.5, 2, 2, 1.5])
     
     with col1:
-        st.header("Products with UK name", )
+        st.header("On UK site", )
         edited_df = st.data_editor(
             with_range_summary, 
             column_config={"range": "Enter new name"},  # Makes the "range" column editable
@@ -147,7 +147,7 @@ def display_tables(df_with_range, df_without_range):
                     update_product_name(product_code, new_name)
     
     with col2:
-        st.header("Products without UK name")
+        st.header("Not on UK site")
         edited_df = st.data_editor(
             without_range_summary, 
             column_config={"range": "Enter new name"},  # Makes the "range" column editable
@@ -175,9 +175,9 @@ else:
     a, col1, col2, b = st.columns([1, 3, 3, 1])
 
     # Display cards for products with range in column 1
-    col1.header("Products with UK name")
+    col1.header("Products without model")
     display_cards(with_range_df, col1)
 
     # Display cards for products without range in column 2
-    col2.header("Products without UK name")
+    col2.header("Products without model")
     display_cards(without_range_df, col2)

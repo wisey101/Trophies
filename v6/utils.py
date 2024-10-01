@@ -28,7 +28,6 @@ def load_data(materials_dict):
             if hasattr(response, 'data') and hasattr(size_response, 'data'):
                 data = response.data
                 size_data = size_response.data
-
                 if data and size_data:
                     prod_df = pd.DataFrame(data)
                     sizes_df = pd.DataFrame(size_data)
@@ -42,7 +41,7 @@ def load_data(materials_dict):
                     df['image url'] = base_url + df['model_code_clean'] + '.jpg'
                     df['product name'] = df.apply(lambda row: f"{row['name']} {row['sport']} {row['type']}" if row['name'] else None, axis=1)
                     df['range'] = df['name']
-                    df = df[['product name', 'model', 'image url', 'size', 'size_code', 'product_code', 'range']]
+                    df = df[['product name', 'model', 'image url', 'size', 'size_code', 'product_code', 'range', 'sport']]
                     df.rename(columns={'model': 'code', 'size': 'sizes', 'size_code': 'size_codes', 'product_code': 'product code'}, inplace=True)
                     data_frames.append(df)
 

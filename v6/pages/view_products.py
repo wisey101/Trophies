@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
-from st_supabase_connection import SupabaseConnection, execute_query
+from st_supabase_connection import SupabaseConnection
+from utils import load_data  # Import load_data from utils
 
 st.set_page_config(layout="wide")
 
@@ -8,6 +9,15 @@ supabase = st.connection("supabase", type=SupabaseConnection)
 
 st.title("All products")
 st.page_link("Trophy_manager.py", label="**Back**", icon="⬅️")
+
+# Check if 'products' is in session_state
+if 'products' not in st.session_state:
+    st.warning("Product data not found. Loading data now...")
+    materials_dict = {
+        'trophies': ['acrylic', 'wood'],
+        'medals': ['acrylic', 'wood', 'metal']
+    }
+    load_data(materials_dict)
 
 # Access the final DataFrame from session state
 products_df = st.session_state['products']

@@ -1,3 +1,4 @@
+import time
 import streamlit as st
 from st_supabase_connection import SupabaseConnection, execute_query
 import pandas as pd
@@ -17,7 +18,7 @@ supabase = st.connection("supabase", type=SupabaseConnection)
 supabase_url = st.secrets["connections"]["supabase"]["SUPABASE_URL"]
 
 materials_dict = {
-    'trophies': ['acrylic', 'wood'],
+    'trophies': ['acrylic', 'wood', 'glass'],
     'medals': ['acrylic', 'wood', 'metal']
 }
 
@@ -31,6 +32,7 @@ st.title("Trophy Monster Product Manager")
 if st.button("🔄 Refresh Data"):
     st.cache_data.clear()
     load_data(materials_dict)
+
 
 # Initialise the order in session state
 if 'order' not in st.session_state:
@@ -125,32 +127,109 @@ def edit_product(model, origin, name, sport):
     if sport:
         execute_query(supabase.table(origin_table).update({"sport": sport}).eq("model", model))
     st.cache_data.clear()
+    st.rerun()
     load_data(materials_dict)
-    
-def display_pagination(key, total, page_size=25, align='center', jump=True, show_total=True):
-    # Calculate total pages
-    total_pages = math.ceil(total / page_size)
 
+# Function to sort the DataFrame based on session state
+def sort_results(df):
+    sort_by = st.session_state.get('sort_by', None)
+    sort_order = st.session_state.get('sort_order', 'asc')
+
+    if sort_by:
+        # Determine the column name in the DataFrame
+        if sort_by == 'product_name':
+            sort_col = 'product name'  # Adjust based on actual column name
+        elif sort_by == 'code':
+            sort_col = 'code'
+        else:
+            sort_col = None
+
+        if sort_col and sort_col in df.columns:
+            ascending = True if sort_order == 'asc' else False
+            df = df.sort_values(by=sort_col, ascending=ascending)
+    
+    return df
+
+# Function to display the pagination bar and sorting buttons
+def display_pagination(key, total, page_size=25, align='center', jump=True, show_total=True):
     # Initialize current_page in session state if not present
     if 'current_page' not in st.session_state:
         st.session_state['current_page'] = 1
 
-    # Display the Ant Design pagination component
-    selected_page = sac.pagination(
-        total=total,
-        index=st.session_state['current_page'],
-        page_size=page_size,
-        align=align,
-        jump=jump,
-        show_total=show_total,
-        key=f"pagination_{key}",
-        color="green"
-    )
+    # Initialize sorting preferences if not present
+    if 'sort_by' not in st.session_state:
+        st.session_state['sort_by'] = None  # Options: 'product_name' or 'code'
+    if 'sort_order' not in st.session_state:
+        st.session_state['sort_order'] = 'asc'  # Options: 'asc' or 'desc'
 
-    # Update the current_page in session state if changed
-    if selected_page != st.session_state['current_page']:
-        st.session_state['current_page'] = selected_page
-        st.rerun()
+    if key=="top":
+        # Create columns for pagination and sorting
+        col_pagination, col_sorting = st.columns([2, 1.4])
+
+        with col_pagination:
+            # Display the Ant Design pagination component
+            selected_page = sac.pagination(
+                total=total,
+                index=st.session_state['current_page'],
+                page_size=page_size,
+                align=align,
+                jump=jump,
+                show_total=show_total,
+                key=f"pagination_{key}",
+                color="green"
+            )
+
+            # Update the current_page in session state if changed
+            if selected_page != st.session_state['current_page']:
+                st.session_state['current_page'] = selected_page
+                st.rerun()
+        
+        with col_sorting:
+            # Sorting Buttons
+            title, sort_col1, sort_col2 = st.columns(3, vertical_alignment='center')
+            
+            with title:
+                st.write("**Sort by:**")
+
+            with sort_col1:
+                # Determine arrow based on current sort order for 'name'
+                if st.session_state['sort_by'] == 'product_name':
+                    arrow = "↑" if st.session_state['sort_order'] == 'asc' else "↓"
+                else:
+                    arrow = ""
+                
+                # Button label with arrow
+                name_label = f"Name {arrow}"
+                
+                if st.button(name_label, key=f"sort_name_{key}"):
+                    # Toggle sort order if already sorted by product name
+                    if st.session_state['sort_by'] == 'product_name':
+                        st.session_state['sort_order'] = 'desc' if st.session_state['sort_order'] == 'asc' else 'asc'
+                    else:
+                        st.session_state['sort_by'] = 'product_name'
+                        st.session_state['sort_order'] = 'asc'
+                    st.session_state['current_page'] = 1  # Reset to first page
+                    st.rerun()
+
+            with sort_col2:
+                # Determine arrow based on current sort order for 'code'
+                if st.session_state['sort_by'] == 'code':
+                    arrow = "↑" if st.session_state['sort_order'] == 'asc' else "↓"
+                else:
+                    arrow = ""
+                
+                # Button label with arrow
+                code_label = f"Code {arrow}"
+                
+                if st.button(code_label, key=f"sort_code_{key}"):
+                    # Toggle sort order if already sorted by code
+                    if st.session_state['sort_by'] == 'code':
+                        st.session_state['sort_order'] = 'desc' if st.session_state['sort_order'] == 'asc' else 'asc'
+                    else:
+                        st.session_state['sort_by'] = 'code'
+                        st.session_state['sort_order'] = 'asc'
+                    st.session_state['current_page'] = 1  # Reset to first page
+                    st.rerun()
 
 # Main function to load data and handle search functionality.
 def main():
@@ -181,6 +260,9 @@ def main():
             total_results = len(result_df)
             total_pages = math.ceil(total_results / PAGE_SIZE)
 
+            # Sort the results based on user preference
+            sorted_df = sort_results(result_df)
+
             # Initialize current_page in session state
             if 'current_page' not in st.session_state:
                 st.session_state['current_page'] = 1
@@ -194,11 +276,11 @@ def main():
             # Calculate start and end indices for slicing
             start_idx = (st.session_state['current_page'] - 1) * PAGE_SIZE
             end_idx = start_idx + PAGE_SIZE
-            current_page_df = result_df.iloc[start_idx:end_idx]
+            current_page_df = sorted_df.iloc[start_idx:end_idx]
 
             # Display the sleek pagination bar above the search input
             st.markdown("<hr style='margin-top: 20px; margin-bottom: 20px;'>", unsafe_allow_html=True)
-            display_pagination(key="top", total=total_results, page_size=PAGE_SIZE, align='center', jump=False, show_total=True)
+            display_pagination(key="top", total=total_results, page_size=PAGE_SIZE, align='left', jump=False, show_total=True)
             st.markdown("<hr style='margin-top: 0px; margin-bottom: 10px;'>", unsafe_allow_html=True)
 
             for idx, row in current_page_df.iterrows():
@@ -270,8 +352,26 @@ def main():
                     st.image(row['image url'], width=175)
                     st.write('---')
 
-            display_pagination(key="bottom", total=total_results, page_size=PAGE_SIZE, align='center', jump=False, show_total=True)
-            st.markdown("<hr style='margin-top: 10px; margin-bottom: 20px;'>", unsafe_allow_html=True)
+            def back_to_top():
+                js = '''
+                <script>
+                    var body = window.parent.document.querySelector(".main");
+                    if(body){
+                        body.scrollTop = 0;
+                    }
+                </script>
+                '''
+                temp = st.empty()
+                with temp:
+                    st.components.v1.html(js)
+                    time.sleep(0.3)  # Ensure the script has time to execute
+                temp.empty()
+
+            _, top, _ = st.columns([1.2,1,1])
+            with top:
+                if st.button("⬆️ Back to Top"):
+                    back_to_top()
+            st.markdown("<hr style='margin-top: 20px; margin-bottom: 20px;'>", unsafe_allow_html=True)
 
         else:
             st.write("No products found.")

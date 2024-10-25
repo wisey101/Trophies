@@ -156,7 +156,6 @@ st.bar_chart(data=top_customers.set_index('Email')['Total Price Spent (£)'])
 # New Feature: Upload and Insert Data
 # ------------------------
 
-st.sidebar.markdown("---")
 st.sidebar.header("Upload Orders Data")
 
 uploaded_file = None

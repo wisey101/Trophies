@@ -3,3 +3,4 @@ st-supabase-connection==2.0.0
 pandas
 streamlit_antd_components
 openpyxl
+streamlit_scroll_to_top

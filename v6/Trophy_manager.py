@@ -4,7 +4,7 @@ from st_supabase_connection import SupabaseConnection, execute_query
 import pandas as pd
 import math
 import streamlit_antd_components as sac
-
+from streamlit_scroll_to_top import scroll_to_here
 
 st.set_page_config(
     page_title="Trophy Manager",
@@ -12,6 +12,10 @@ st.set_page_config(
 )
 
 from utils import load_data
+
+# Initialize scroll states
+if 'scroll_to_top' not in st.session_state:
+    st.session_state.scroll_to_top = False
 
 # Initialize connection and grab URL from secrets
 supabase = st.connection("supabase", type=SupabaseConnection)
@@ -27,12 +31,27 @@ singular_to_plural = {
     'medal': 'medals'
 }
 
+# Handle scrolling when needed
+if st.session_state.scroll_to_top:
+    scroll_to_here(0, key='top')
+    st.session_state.scroll_to_top = False
+
+# Initialize session state and load data on first run
+if 'initialized' not in st.session_state:
+    st.session_state['initialized'] = True
+    st.session_state['order'] = {}
+    st.session_state['products'] = load_data(materials_dict)
+
 st.title("Trophy Monster Product Manager")
 
 if st.button("🔄 Refresh Data"):
     st.cache_data.clear()
     load_data(materials_dict)
 
+# Function to trigger scroll to top
+def trigger_scroll_to_top():
+    st.session_state.scroll_to_top = True
+    st.rerun()
 
 # Initialise the order in session state
 if 'order' not in st.session_state:
@@ -49,6 +68,7 @@ def add_to_order(product_code, quantity, notes=""):
         st.session_state['order'][product_code]['notes'] = notes
     else:
         st.session_state['order'][product_code] = {"quantity": quantity, "notes": notes}
+    trigger_scroll_to_top()
 
 # Function to generate the live order table within the placeholder
 def display_order_table():
@@ -234,12 +254,7 @@ def display_pagination(key, total, page_size=25, align='center', jump=True, show
 # Main function to load data and handle search functionality.
 def main():
 
-    # Load data if not already loaded
-    if 'products' not in st.session_state or st.session_state['products'].empty:
-        load_data(materials_dict)
-
     final_df = st.session_state['products']
-
     display_order_table()
     search_query = st.text_input("Search for a product by name or code:")
 
@@ -352,25 +367,10 @@ def main():
                     st.image(row['image url'], width=175)
                     st.write('---')
 
-            def back_to_top():
-                js = '''
-                <script>
-                    var body = window.parent.document.querySelector(".main");
-                    if(body){
-                        body.scrollTop = 0;
-                    }
-                </script>
-                '''
-                temp = st.empty()
-                with temp:
-                    st.components.v1.html(js)
-                    time.sleep(0.3)  # Ensure the script has time to execute
-                temp.empty()
-
+            # Modified Back to Top button
             _, top, _ = st.columns([1.2,1,1])
             with top:
-                if st.button("⬆️ Back to Top"):
-                    back_to_top()
+                st.button("⬆️ Back to Top", on_click=trigger_scroll_to_top)
             st.markdown("<hr style='margin-top: 20px; margin-bottom: 20px;'>", unsafe_allow_html=True)
 
         else:

@@ -8,6 +8,22 @@ import time
 # Set page configuration
 st.set_page_config(page_title="CRM Dashboard", layout="wide")
 
+# Check authentication
+if "authenticated" not in st.session_state:
+    st.session_state["authenticated"] = False
+
+if not st.session_state["authenticated"]:
+    st.title("Please Enter Password")
+    password = st.text_input("Password", type="password")
+    if st.button("Submit"):
+        stored_password = "123"
+        if password == stored_password:
+            st.session_state["authenticated"] = True
+            st.rerun()
+        else:
+            st.error("Incorrect password. Please try again.")
+    st.stop()
+
 # Initialize Supabase connection
 supabase = st.connection("supabase", type=SupabaseConnection)
 supabase_url = st.secrets["connections"]["supabase"]["SUPABASE_URL"]
@@ -19,6 +35,10 @@ supabase_client: Client = create_client(supabase_url, supabase_key)
 # Page Title and Navigation
 st.title("CRM Dashboard")
 st.page_link("Trophy_manager.py", label="**Back to Trophy Manager**", icon="⬅️")
+
+if st.button("refresh"):
+    st.cache_data.clear() 
+    st.rerun()
 
 # Initialize session_state for upload tracking
 if 'upload_complete' not in st.session_state:

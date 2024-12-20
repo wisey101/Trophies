@@ -332,7 +332,6 @@ def main():
                             notes = st.text_input(f"Notes (e.g. colour) for {row['product name']}", key=f"notes_{row['product name']}_{idx}")
                             
                             # Confirmation button to add to cart
-                            # Confirmation button to add to cart
                             if st.button("Confirm Add to Order", key=f"confirm_{row['product name']}_{idx}"):
                                 # Define the ranges that require appending 'sport' to notes
                                 ranges_to_append_sport = ['ACLA2101', 'MDAB', 'MDAA10']

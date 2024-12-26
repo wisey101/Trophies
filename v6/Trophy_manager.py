@@ -304,7 +304,7 @@ def main():
                     
                     with col1:
                         st.write(f"**Product Name**: {row['product name']}")
-                        st.write(f"**Product Code**: {row['code']}")
+                        st.write(f"**Product Code**: {row['product code']}")  # Updated to use 'product code'
                         if row['sizes']:
                             sizes_display = ", ".join([f"{size}mm" for size in row['sizes']])
                             st.write(f"**Available Sizes**: {sizes_display}")
@@ -314,7 +314,7 @@ def main():
                     with col2:
                         with st.popover(f"Add to Order"):
                             if row['sizes']:
-                            # Size selection dropdown
+                                # Size selection dropdown
                                 size_selected = st.selectbox(
                                     f"Select Size for {row['product name']}",
                                     options=[f"{size}mm" for size in row['sizes']], 
@@ -323,7 +323,8 @@ def main():
 
                                 # Map the selected size back to the corresponding size_code
                                 size_index = [f"{size}mm" for size in row['sizes']].index(size_selected)
-                                size_code = row['size_codes'][size_index]  # Get the corresponding size_code
+                                # Handle cases where size_codes might not exist (e.g., for metal_cups)
+                                size_code = row['size_codes'][size_index] if row['size_codes'] else row['sizes'][size_index]
 
                             # Quantity input
                             quantity = st.number_input(f"Quantity for {row['product name']}", min_value=1, value=1, key=f"qty_{row['product name']}_{idx}")
@@ -337,12 +338,13 @@ def main():
                                 ranges_to_append_sport = ['ACLA2101', 'MDAB', 'MDAA10']
                                 
                                 # Check if the product's range is in the specified list
-                                if row['product code'] in ranges_to_append_sport:
-                                    # Append 'sport' to the notes
-                                    if notes.strip():  # Check if notes are not empty
-                                        notes += f", {row['sport']}"
-                                    else:
-                                        notes = f"{row['sport']}"
+                                if row['range'] in ranges_to_append_sport:
+                                    # Append 'sport' to the notes if it exists
+                                    if row['sport']:
+                                        if notes.strip():  # Check if notes are not empty
+                                            notes += f", {row['sport']}"
+                                        else:
+                                            notes = f"{row['sport']}"
                                 
                                 if notes.strip():  # Check if notes are not empty
                                     notes += f", {size_selected}"
@@ -351,7 +353,7 @@ def main():
 
 
                                 # Add the product to the order with the updated notes
-                                add_to_order(size_code, quantity, notes)
+                                add_to_order(row['product code'], quantity, notes)
                                 st.rerun()
 
 
@@ -360,7 +362,9 @@ def main():
                             name = st.text_input("Enter a new model name", key=f"namechange_{row['product name']}_{idx}")
                             sport = st.text_input("Enter a new sport/category", key=f"sportchange_{row['product name']}_{idx}")
                             if st.button("Confirm", key=f"confirmedit_{row['product name']}_{idx}"):
-                                edit_product(row['code'], row['product name'].split()[-2:], name, sport)
+                                # Split the 'product name' to extract relevant parts for updating
+                                origin = row['product name'].split()[-2:] if row['product name'] else []
+                                edit_product(row['code'], origin, name, sport)
                     
                     # Display the image below the text and button
                     st.image(row['image url'], width=175)

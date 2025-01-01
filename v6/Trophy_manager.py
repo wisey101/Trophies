@@ -304,7 +304,7 @@ def main():
                     
                     with col1:
                         st.write(f"**Product Name**: {row['product name']}")
-                        st.write(f"**Product Code**: {row['code']}")  # Updated to use 'product code'
+                        st.write(f"**Product Code**: {row['code']}") 
                         if row['sizes']:
                             sizes_display = ", ".join([f"{size}mm" for size in row['sizes']])
                             st.write(f"**Available Sizes**: {sizes_display}")
@@ -353,7 +353,7 @@ def main():
 
 
                                 # Add the product to the order with the updated notes
-                                add_to_order(row['product code'], quantity, notes)
+                                add_to_order(row['code'], quantity, notes)
                                 st.rerun()
 
 

@@ -304,7 +304,7 @@ def main():
                     
                     with col1:
                         st.write(f"**Product Name**: {row['product name']}")
-                        st.write(f"**Product Code**: {row['product code']}")  # Updated to use 'product code'
+                        st.write(f"**Product Code**: {row['code']}")  # Updated to use 'product code'
                         if row['sizes']:
                             sizes_display = ", ".join([f"{size}mm" for size in row['sizes']])
                             st.write(f"**Available Sizes**: {sizes_display}")

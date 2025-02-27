@@ -22,7 +22,7 @@ supabase = st.connection("supabase", type=SupabaseConnection)
 supabase_url = st.secrets["connections"]["supabase"]["SUPABASE_URL"]
 
 materials_dict = {
-    'trophies': ['acrylic', 'wood', 'glass'],
+    'trophies': ['acrylic', 'wood', 'glass', 'metal'],
     'medals': ['acrylic', 'wood', 'metal']
 }
 

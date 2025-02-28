@@ -4,3 +4,6 @@ pandas
 streamlit_antd_components
 openpyxl
 streamlit_scroll_to_top
+requests
+beautifulsoup4
+deep_translator

@@ -7,4 +7,3 @@ streamlit_scroll_to_top
 requests
 beautifulsoup4
 deep_translator
-mimetypes

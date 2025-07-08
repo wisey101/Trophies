@@ -71,3 +71,34 @@ def insert_sizes_and_update_sizes_table(products, sizes):
                     _ = execute_query(supabase.table(sizes_table).insert(row_data), ttl=0)
                 except Exception as e:
                     st.error(f"Error inserting into '{sizes_table}' for model '{model}': {e}")
+
+def update_ribbon_stock(summary_df):
+    updates_made = []
+
+    for _, row in summary_df.iterrows():
+        colour = row["colour"]
+        ordered_qty = int(row["quantity"])
+
+        # 1) Fetch current quantity
+        response = execute_query(
+            supabase.table("ribbons").select("quantity").eq("colour", colour),
+            ttl=0
+        )
+
+        if response.data:
+            current_qty = response.data[0]["quantity"]
+            new_qty = max(current_qty - ordered_qty, 0)
+
+            # 2) Update the stock
+            _ = execute_query(
+                supabase.table("ribbons")
+                .update({"quantity": new_qty})
+                .eq("colour", colour),
+                ttl=0
+            )
+
+            updates_made.append((colour, current_qty, ordered_qty, new_qty))
+        else:
+            updates_made.append((colour, None, ordered_qty, None))
+
+    return updates_made

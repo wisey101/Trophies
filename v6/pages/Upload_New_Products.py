@@ -61,6 +61,7 @@ if st.session_state.current_step == "input":
             st.session_state.current_step = "preview"
             st.rerun()
 
+
 # STEP 2: Preview and Edit Products
 if st.session_state.current_step == "preview":
     # If scraping hasn't been done yet, perform it.
